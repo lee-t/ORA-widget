@@ -1,0 +1,53 @@
+MapFormat: 12
+
+RequiresMod: cnc
+
+Title: Opera Battle Arena
+
+Author: opera-battles
+
+Tileset: DESERT
+
+MapSize: 72,72
+
+Bounds: 1,1,70,70
+
+Visibility: MissionSelector
+
+Categories: Campaign
+
+LockPreview: True
+
+Players:
+    PlayerReference@Neutral:
+        Name: Neutral
+        OwnsWorld: True
+        NonCombatant: True
+        Faction: gdi
+    PlayerReference@Attacker:
+        Name: Attacker
+        Playable: True
+        Required: True
+        Faction: nod
+        LockFaction: True
+        Color: FE1100
+        Enemies: Defender
+    PlayerReference@Defender:
+        Name: Defender
+        Bot: campaign
+        Faction: gdi
+        Color: 5B7FE7
+        Enemies: Attacker
+
+Actors:
+    CameraPoint: waypoint
+        Location: 36,36
+        Owner: Neutral
+    AttackerSpawn: waypoint
+        Location: 27,36
+        Owner: Neutral
+    DefenderSpawn: waypoint
+        Location: 45,36
+        Owner: Neutral
+
+Rules: cnc|rules/campaign-maprules.yaml, rules.yaml

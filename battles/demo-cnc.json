@@ -1,0 +1,14 @@
+{
+  "mod": "cnc",
+  "attacker": [
+    { "type": "htnk", "count": 4 },
+    { "type": "bike", "count": 4 }
+  ],
+  "defender": [
+    { "type": "mtnk", "count": 6 },
+    { "type": "arty", "count": 2 },
+    { "type": "e1", "count": 6 }
+  ],
+  "grid_cols": 4,
+  "seed": 1
+}

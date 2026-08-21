@@ -1,0 +1,17 @@
+World:
+    LuaScript:
+        Scripts: config.lua, battle.lua
+    MissionData:
+        Briefing: Two armies smash into each other. Watch and record.
+    MapOptions:
+        GameSpeed: battle-turbo
+        GameSpeedDropdownLocked: True
+
+Player:
+    MissionObjectives:
+        GameOverDelay: 25
+    Shroud:
+        ExploredMapCheckboxEnabled: True
+        ExploredMapCheckboxLocked: True
+        FogCheckboxEnabled: False
+        FogCheckboxLocked: True

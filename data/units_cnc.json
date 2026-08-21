@@ -1,0 +1,152 @@
+{
+  "mod": "cnc",
+  "units": [
+    {
+      "code": "heli",
+      "name": "Apache Longbow",
+      "cost": 1200,
+      "category": "aircraft",
+      "queue": "Aircraft.Nod"
+    },
+    {
+      "code": "orca",
+      "name": "Orca",
+      "cost": 1200,
+      "category": "aircraft",
+      "queue": "Aircraft.GDI"
+    },
+    {
+      "code": "e1",
+      "name": "Minigunner",
+      "cost": 100,
+      "category": "infantry",
+      "queue": "Infantry.GDI, Infantry.Nod"
+    },
+    {
+      "code": "e2",
+      "name": "Grenadier",
+      "cost": 160,
+      "category": "infantry",
+      "queue": "Infantry.GDI"
+    },
+    {
+      "code": "e4",
+      "name": "Flamethrower",
+      "cost": 200,
+      "category": "infantry",
+      "queue": "Infantry.Nod"
+    },
+    {
+      "code": "e3",
+      "name": "Rocket Soldier",
+      "cost": 300,
+      "category": "infantry",
+      "queue": "Infantry.GDI, Infantry.Nod"
+    },
+    {
+      "code": "e5",
+      "name": "Chemical Warrior",
+      "cost": 300,
+      "category": "infantry",
+      "queue": "Infantry.Nod"
+    },
+    {
+      "code": "e6",
+      "name": "Engineer",
+      "cost": 500,
+      "category": "infantry",
+      "queue": "Infantry.GDI, Infantry.Nod"
+    },
+    {
+      "code": "rmbo",
+      "name": "Commando",
+      "cost": 1500,
+      "category": "infantry",
+      "queue": "Infantry.GDI"
+    },
+    {
+      "code": "bggy",
+      "name": "Nod Buggy",
+      "cost": 300,
+      "category": "vehicle",
+      "queue": "Vehicle.Nod"
+    },
+    {
+      "code": "jeep",
+      "name": "Hum-vee",
+      "cost": 400,
+      "category": "vehicle",
+      "queue": "Vehicle.GDI"
+    },
+    {
+      "code": "bike",
+      "name": "Recon Bike",
+      "cost": 500,
+      "category": "vehicle",
+      "queue": "Vehicle.Nod"
+    },
+    {
+      "code": "apc",
+      "name": "APC",
+      "cost": 600,
+      "category": "vehicle",
+      "queue": "Vehicle.GDI"
+    },
+    {
+      "code": "arty",
+      "name": "Artillery",
+      "cost": 600,
+      "category": "vehicle",
+      "queue": "Vehicle.Nod"
+    },
+    {
+      "code": "ftnk",
+      "name": "Flame Tank",
+      "cost": 600,
+      "category": "vehicle",
+      "queue": "Vehicle.Nod"
+    },
+    {
+      "code": "mlrs",
+      "name": "Mobile SAM",
+      "cost": 600,
+      "category": "vehicle",
+      "queue": "Vehicle.Nod"
+    },
+    {
+      "code": "ltnk",
+      "name": "Light Tank",
+      "cost": 750,
+      "category": "vehicle",
+      "queue": "Vehicle.Nod"
+    },
+    {
+      "code": "msam",
+      "name": "Rocket Launcher",
+      "cost": 900,
+      "category": "vehicle",
+      "queue": "Vehicle.GDI"
+    },
+    {
+      "code": "mtnk",
+      "name": "Medium Tank",
+      "cost": 900,
+      "category": "vehicle",
+      "queue": "Vehicle.GDI"
+    },
+    {
+      "code": "stnk",
+      "name": "Stealth Tank",
+      "cost": 900,
+      "category": "vehicle",
+      "queue": "Vehicle.Nod"
+    },
+    {
+      "code": "htnk",
+      "name": "Mammoth Tank",
+      "cost": 1800,
+      "category": "vehicle",
+      "queue": "Vehicle.GDI"
+    }
+  ]
+}

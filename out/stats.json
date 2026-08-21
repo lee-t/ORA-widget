@@ -1,0 +1,801 @@
+{
+  "mod": "cnc",
+  "seed": 6,
+  "winner": "Defender",
+  "ticks": 635,
+  "ticks_per_second": 50,
+  "spawned": {
+    "Attacker": 17,
+    "Defender": 11
+  },
+  "survivors": {
+    "Attacker": 0,
+    "Defender": 6
+  },
+  "kills": [
+    {
+      "tick": 130,
+      "side": "Attacker",
+      "victim": "bike",
+      "killer": "arty"
+    },
+    {
+      "tick": 168,
+      "side": "Defender",
+      "victim": "e2",
+      "killer": "apc"
+    },
+    {
+      "tick": 182,
+      "side": "Attacker",
+      "victim": "bggy",
+      "killer": "e4"
+    },
+    {
+      "tick": 192,
+      "side": "Attacker",
+      "victim": "apc",
+      "killer": "mtnk"
+    },
+    {
+      "tick": 195,
+      "side": "Defender",
+      "victim": "e4",
+      "killer": "bggy"
+    },
+    {
+      "tick": 250,
+      "side": "Attacker",
+      "victim": "bggy",
+      "killer": "mtnk"
+    },
+    {
+      "tick": 270,
+      "side": "Attacker",
+      "victim": "ftnk",
+      "killer": "mtnk"
+    },
+    {
+      "tick": 276,
+      "side": "Defender",
+      "victim": "mtnk",
+      "killer": "stnk"
+    },
+    {
+      "tick": 288,
+      "side": "Attacker",
+      "victim": "bike",
+      "killer": "mtnk"
+    },
+    {
+      "tick": 350,
+      "side": "Attacker",
+      "victim": "stnk",
+      "killer": "mtnk"
+    },
+    {
+      "tick": 403,
+      "side": "Attacker",
+      "victim": "apc",
+      "killer": "arty"
+    },
+    {
+      "tick": 407,
+      "side": "Attacker",
+      "victim": "e3",
+      "killer": "mtnk"
+    },
+    {
+      "tick": 430,
+      "side": "Attacker",
+      "victim": "bike",
+      "killer": "mtnk"
+    },
+    {
+      "tick": 430,
+      "side": "Attacker",
+      "victim": "bike",
+      "killer": "mtnk"
+    },
+    {
+      "tick": 494,
+      "side": "Attacker",
+      "victim": "apc",
+      "killer": "arty"
+    },
+    {
+      "tick": 495,
+      "side": "Defender",
+      "victim": "mtnk",
+      "killer": "e3"
+    },
+    {
+      "tick": 496,
+      "side": "Defender",
+      "victim": "mtnk",
+      "killer": "e3"
+    },
+    {
+      "tick": 499,
+      "side": "Attacker",
+      "victim": "e3",
+      "killer": "arty"
+    },
+    {
+      "tick": 511,
+      "side": "Attacker",
+      "victim": "e3",
+      "killer": "mtnk"
+    },
+    {
+      "tick": 566,
+      "side": "Attacker",
+      "victim": "e3",
+      "killer": "arty"
+    },
+    {
+      "tick": 627,
+      "side": "Attacker",
+      "victim": "e3",
+      "killer": "mtnk"
+    },
+    {
+      "tick": 635,
+      "side": "Attacker",
+      "victim": "e3",
+      "killer": "arty"
+    }
+  ],
+  "strength": [
+    {
+      "tick": 5,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 10,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 15,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 20,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 25,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 30,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 35,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 40,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 45,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 50,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 55,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 60,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 65,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 70,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 75,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 80,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 85,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 90,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 95,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 100,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 105,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 110,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 115,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 120,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 125,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 130,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 135,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 140,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 145,
+      "Attacker": 0,
+      "Defender": 600
+    },
+    {
+      "tick": 150,
+      "Attacker": 0,
+      "Defender": 599
+    },
+    {
+      "tick": 155,
+      "Attacker": 0,
+      "Defender": 599
+    },
+    {
+      "tick": 160,
+      "Attacker": 0,
+      "Defender": 597
+    },
+    {
+      "tick": 165,
+      "Attacker": 0,
+      "Defender": 597
+    },
+    {
+      "tick": 170,
+      "Attacker": 0,
+      "Defender": 597
+    },
+    {
+      "tick": 175,
+      "Attacker": 0,
+      "Defender": 597
+    },
+    {
+      "tick": 180,
+      "Attacker": 0,
+      "Defender": 597
+    },
+    {
+      "tick": 185,
+      "Attacker": 0,
+      "Defender": 597
+    },
+    {
+      "tick": 190,
+      "Attacker": 0,
+      "Defender": 597
+    },
+    {
+      "tick": 195,
+      "Attacker": 0,
+      "Defender": 597
+    },
+    {
+      "tick": 200,
+      "Attacker": 0,
+      "Defender": 597
+    },
+    {
+      "tick": 205,
+      "Attacker": 0,
+      "Defender": 596
+    },
+    {
+      "tick": 210,
+      "Attacker": 0,
+      "Defender": 594
+    },
+    {
+      "tick": 215,
+      "Attacker": 0,
+      "Defender": 594
+    },
+    {
+      "tick": 220,
+      "Attacker": 0,
+      "Defender": 593
+    },
+    {
+      "tick": 225,
+      "Attacker": 0,
+      "Defender": 576
+    },
+    {
+      "tick": 230,
+      "Attacker": 0,
+      "Defender": 575
+    },
+    {
+      "tick": 235,
+      "Attacker": 0,
+      "Defender": 563
+    },
+    {
+      "tick": 240,
+      "Attacker": 0,
+      "Defender": 563
+    },
+    {
+      "tick": 245,
+      "Attacker": 0,
+      "Defender": 563
+    },
+    {
+      "tick": 250,
+      "Attacker": 0,
+      "Defender": 562
+    },
+    {
+      "tick": 255,
+      "Attacker": 0,
+      "Defender": 562
+    },
+    {
+      "tick": 260,
+      "Attacker": 0,
+      "Defender": 562
+    },
+    {
+      "tick": 265,
+      "Attacker": 0,
+      "Defender": 561
+    },
+    {
+      "tick": 270,
+      "Attacker": 0,
+      "Defender": 561
+    },
+    {
+      "tick": 275,
+      "Attacker": 0,
+      "Defender": 554
+    },
+    {
+      "tick": 280,
+      "Attacker": 0,
+      "Defender": 552
+    },
+    {
+      "tick": 285,
+      "Attacker": 0,
+      "Defender": 551
+    },
+    {
+      "tick": 290,
+      "Attacker": 0,
+      "Defender": 551
+    },
+    {
+      "tick": 295,
+      "Attacker": 0,
+      "Defender": 551
+    },
+    {
+      "tick": 300,
+      "Attacker": 0,
+      "Defender": 550
+    },
+    {
+      "tick": 305,
+      "Attacker": 0,
+      "Defender": 550
+    },
+    {
+      "tick": 310,
+      "Attacker": 0,
+      "Defender": 550
+    },
+    {
+      "tick": 315,
+      "Attacker": 0,
+      "Defender": 550
+    },
+    {
+      "tick": 320,
+      "Attacker": 0,
+      "Defender": 549
+    },
+    {
+      "tick": 325,
+      "Attacker": 0,
+      "Defender": 541
+    },
+    {
+      "tick": 330,
+      "Attacker": 0,
+      "Defender": 533
+    },
+    {
+      "tick": 335,
+      "Attacker": 0,
+      "Defender": 532
+    },
+    {
+      "tick": 340,
+      "Attacker": 0,
+      "Defender": 532
+    },
+    {
+      "tick": 345,
+      "Attacker": 0,
+      "Defender": 532
+    },
+    {
+      "tick": 350,
+      "Attacker": 0,
+      "Defender": 532
+    },
+    {
+      "tick": 355,
+      "Attacker": 0,
+      "Defender": 524
+    },
+    {
+      "tick": 360,
+      "Attacker": 0,
+      "Defender": 524
+    },
+    {
+      "tick": 365,
+      "Attacker": 0,
+      "Defender": 517
+    },
+    {
+      "tick": 370,
+      "Attacker": 0,
+      "Defender": 517
+    },
+    {
+      "tick": 375,
+      "Attacker": 0,
+      "Defender": 516
+    },
+    {
+      "tick": 380,
+      "Attacker": 0,
+      "Defender": 508
+    },
+    {
+      "tick": 385,
+      "Attacker": 0,
+      "Defender": 500
+    },
+    {
+      "tick": 390,
+      "Attacker": 0,
+      "Defender": 499
+    },
+    {
+      "tick": 395,
+      "Attacker": 0,
+      "Defender": 499
+    },
+    {
+      "tick": 400,
+      "Attacker": 0,
+      "Defender": 499
+    },
+    {
+      "tick": 405,
+      "Attacker": 0,
+      "Defender": 499
+    },
+    {
+      "tick": 410,
+      "Attacker": 0,
+      "Defender": 498
+    },
+    {
+      "tick": 415,
+      "Attacker": 0,
+      "Defender": 498
+    },
+    {
+      "tick": 420,
+      "Attacker": 0,
+      "Defender": 491
+    },
+    {
+      "tick": 425,
+      "Attacker": 0,
+      "Defender": 491
+    },
+    {
+      "tick": 430,
+      "Attacker": 0,
+      "Defender": 484
+    },
+    {
+      "tick": 435,
+      "Attacker": 0,
+      "Defender": 469
+    },
+    {
+      "tick": 440,
+      "Attacker": 0,
+      "Defender": 469
+    },
+    {
+      "tick": 445,
+      "Attacker": 0,
+      "Defender": 469
+    },
+    {
+      "tick": 450,
+      "Attacker": 0,
+      "Defender": 469
+    },
+    {
+      "tick": 455,
+      "Attacker": 0,
+      "Defender": 469
+    },
+    {
+      "tick": 460,
+      "Attacker": 0,
+      "Defender": 469
+    },
+    {
+      "tick": 465,
+      "Attacker": 0,
+      "Defender": 469
+    },
+    {
+      "tick": 470,
+      "Attacker": 0,
+      "Defender": 469
+    },
+    {
+      "tick": 475,
+      "Attacker": 0,
+      "Defender": 469
+    },
+    {
+      "tick": 480,
+      "Attacker": 0,
+      "Defender": 469
+    },
+    {
+      "tick": 485,
+      "Attacker": 0,
+      "Defender": 461
+    },
+    {
+      "tick": 490,
+      "Attacker": 0,
+      "Defender": 453
+    },
+    {
+      "tick": 495,
+      "Attacker": 0,
+      "Defender": 453
+    },
+    {
+      "tick": 500,
+      "Attacker": 0,
+      "Defender": 450
+    },
+    {
+      "tick": 505,
+      "Attacker": 0,
+      "Defender": 450
+    },
+    {
+      "tick": 510,
+      "Attacker": 0,
+      "Defender": 450
+    },
+    {
+      "tick": 515,
+      "Attacker": 0,
+      "Defender": 450
+    },
+    {
+      "tick": 520,
+      "Attacker": 0,
+      "Defender": 450
+    },
+    {
+      "tick": 525,
+      "Attacker": 0,
+      "Defender": 450
+    },
+    {
+      "tick": 530,
+      "Attacker": 0,
+      "Defender": 449
+    },
+    {
+      "tick": 535,
+      "Attacker": 0,
+      "Defender": 449
+    },
+    {
+      "tick": 540,
+      "Attacker": 0,
+      "Defender": 449
+    },
+    {
+      "tick": 545,
+      "Attacker": 0,
+      "Defender": 449
+    },
+    {
+      "tick": 550,
+      "Attacker": 0,
+      "Defender": 420
+    },
+    {
+      "tick": 555,
+      "Attacker": 0,
+      "Defender": 420
+    },
+    {
+      "tick": 560,
+      "Attacker": 0,
+      "Defender": 420
+    },
+    {
+      "tick": 565,
+      "Attacker": 0,
+      "Defender": 420
+    },
+    {
+      "tick": 570,
+      "Attacker": 0,
+      "Defender": 420
+    },
+    {
+      "tick": 575,
+      "Attacker": 0,
+      "Defender": 420
+    },
+    {
+      "tick": 580,
+      "Attacker": 0,
+      "Defender": 420
+    },
+    {
+      "tick": 585,
+      "Attacker": 0,
+      "Defender": 420
+    },
+    {
+      "tick": 590,
+      "Attacker": 0,
+      "Defender": 420
+    },
+    {
+      "tick": 595,
+      "Attacker": 0,
+      "Defender": 420
+    },
+    {
+      "tick": 600,
+      "Attacker": 0,
+      "Defender": 420
+    },
+    {
+      "tick": 605,
+      "Attacker": 0,
+      "Defender": 403
+    },
+    {
+      "tick": 610,
+      "Attacker": 0,
+      "Defender": 403
+    },
+    {
+      "tick": 615,
+      "Attacker": 0,
+      "Defender": 403
+    },
+    {
+      "tick": 620,
+      "Attacker": 0,
+      "Defender": 403
+    },
+    {
+      "tick": 625,
+      "Attacker": 0,
+      "Defender": 403
+    },
+    {
+      "tick": 630,
+      "Attacker": 0,
+      "Defender": 403
+    },
+    {
+      "tick": 635,
+      "Attacker": 0,
+      "Defender": 403
+    },
+    {
+      "tick": 635,
+      "Attacker": 0,
+      "Defender": 403
+    }
+  ],
+  "duration_s": 26.4,
+  "video": "/home/serpentarius/Repos/ORA-widget/out/battle.webm",
+  "map_uid": "35c76d9b513670d24a60d1d2db76232fc7ca19db",
+  "result": {
+    "atk_spawned": "17",
+    "def_lost": "5",
+    "winner": "Defender",
+    "def_spawned": "11",
+    "atk_lost": "17"
+  }
+}

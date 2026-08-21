@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<mime-info xmlns='http://www.freedesktop.org/standards/shared-mime-info'>
+  <mime-type type="x-scheme-handler/openra-cnc-release-20250330">
+    <icon name="openra-cnc" />
+    <generic-icon name="applications-games"/>
+    <comment>Join OpenRA server</comment>
+    <glob weight="60" pattern="openra-cnc-release-20250330://*"/>
+  </mime-type>
+  <mime-type type="x-scheme-handler/discord-699223250181292033">
+    <generic-icon name="applications-games"/>
+    <comment>Launch OpenRA from Discord</comment>
+    <glob weight="60" pattern="discord-699223250181292033://*"/>
+  </mime-type>
+</mime-info>
