@@ -31,6 +31,7 @@ DEFAULT_TIMESTEP_RECORDING = 20
 DEFAULT_TIMESTEP_HEADLESS = 5
 LUA_LOG = Path.home() / ".config/openra/Logs/lua.log"
 OUT_DIR = ROOT / "out"
+GAME_PROCESS = None
 
 
 class Mod:
@@ -124,11 +125,28 @@ def start_xvfb() -> None:
 
 
 def stop_game() -> None:
+    global GAME_PROCESS
+    if GAME_PROCESS is not None:
+        try:
+            if GAME_PROCESS.poll() is None:
+                os.killpg(GAME_PROCESS.pid, signal.SIGTERM)
+                GAME_PROCESS.wait(timeout=15)
+        except ProcessLookupError:
+            pass
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(GAME_PROCESS.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        finally:
+            GAME_PROCESS = None
+        return
     sh(["systemctl", "--user", "stop", GAME_UNIT])
     sh(["systemctl", "--user", "reset-failed", GAME_UNIT])
 
 
 def launch_game(map_uid: str, record: bool) -> None:
+    global GAME_PROCESS
     LUA_LOG.parent.mkdir(parents=True, exist_ok=True)
     LUA_LOG.write_text("")
 
@@ -153,9 +171,20 @@ def launch_game(map_uid: str, record: bool) -> None:
     runner.chmod(0o755)
 
     stop_game()
-    subprocess.run(
+    _systemd = subprocess.run(
         ["systemd-run", "--user", f"--unit={GAME_UNIT}", "--collect", str(runner)],
-        capture_output=True, text=True, check=True,
+        capture_output=True, text=True,
+    )
+    if _systemd.returncode == 0:
+        return
+
+    # Molab containers do not run a user systemd manager.
+    GAME_PROCESS = subprocess.Popen(
+        [str(runner)],
+        cwd=ROOT,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
     )
 
 

@@ -39,11 +39,15 @@ def imports():
 
 @app.cell
 def driver():
-    import importlib
+    import importlib.util as _importlib_util
+    from pathlib import Path as _Path
 
-    import battle as battle_driver
-
-    importlib.reload(battle_driver)
+    _driver_path = _Path("battle.py").resolve()
+    _driver_spec = _importlib_util.spec_from_file_location("_ora_battle_driver", _driver_path)
+    if _driver_spec is None or _driver_spec.loader is None:
+        raise ImportError(f"Unable to load battle driver from {_driver_path}")
+    battle_driver = _importlib_util.module_from_spec(_driver_spec)
+    _driver_spec.loader.exec_module(battle_driver)
 
     return (battle_driver,)
 
@@ -51,23 +55,38 @@ def driver():
 @app.cell
 def unit_data(Path, json):
     _catalog = json.loads(Path("data/units_cnc.json").read_text())["units"]
+    _catalog_by_code = {u["code"]: u for u in _catalog}
+    _icon_dir = Path("data/icons/cnc").resolve()
+
+    # Combat rosters follow the CNCNZ GDI/NOD unit pages; support units are omitted.
+    _nod_codes = [
+        "e1", "e3", "e6", "e4", "e5", "rmbo",
+        "bggy", "bike", "ltnk", "arty", "ftnk", "stnk", "mlrs", "heli",
+    ]
+    _gdi_codes = [
+        "e1", "e2", "e3", "e6", "rmbo",
+        "jeep", "apc", "mtnk", "htnk", "msam", "orca",
+    ]
+
+    def _make_units(codes):
+        return [
+            {
+                **_catalog_by_code[code],
+                "dps": round(_catalog_by_code[code]["cost"] / 100, 1),
+                "icon": _icon_dir / f"{code}.png",
+            }
+            for code in codes
+        ]
 
     MODS = {
         "cnc": {
             "label": "Tiberian Dawn",
             "attacker": "NOD",
             "defender": "GDI",
-            "attacker_defaults": {"htnk": 4, "bike": 4},
-            "defender_defaults": {"mtnk": 6, "arty": 2, "e1": 6},
-            "units": [
-                {
-                    "code": u["code"],
-                    "name": u["name"],
-                    "cost": u["cost"],
-                    "dps": round(u["cost"] / 100, 1),
-                }
-                for u in _catalog
-            ],
+            "attacker_units": _make_units(_nod_codes),
+            "defender_units": _make_units(_gdi_codes),
+            "attacker_defaults": {"bggy": 4, "bike": 4},
+            "defender_defaults": {"mtnk": 6, "msam": 2, "e1": 6},
         },
     }
     return (MODS,)
@@ -94,31 +113,61 @@ def controls(MODS, mo):
 @app.cell
 def rosters(MODS, mo, mod_picker):
     _mod_info = MODS[mod_picker.value]
-    _roster_defs = _mod_info["units"]
+    _attacker_defs = _mod_info["attacker_units"]
+    _defender_defs = _mod_info["defender_units"]
 
-    attacker_ui = mo.ui.array(
-        [
-            mo.ui.slider(
-                0, 30,
-                value=_mod_info["attacker_defaults"].get(u["code"], 0),
-                label=f"{u['name']} ({u['cost']})",
-            )
-            for u in _roster_defs
-        ],
-        label="Attacker roster",
-    )
-    defender_ui = mo.ui.array(
-        [
-            mo.ui.slider(
-                0, 30,
-                value=_mod_info["defender_defaults"].get(u["code"], 0),
-                label=f"{u['name']} ({u['cost']})",
-            )
-            for u in _roster_defs
-        ],
-        label="Defender roster",
-    )
-    return attacker_ui, defender_ui
+    _attacker_inputs = [
+        mo.ui.number(
+            start=0,
+            stop=30,
+            step=1,
+            value=_mod_info["attacker_defaults"].get(u["code"], 0),
+            label=f"{u['name']} ({u['cost']} credits)",
+            full_width=False,
+        )
+        for u in _attacker_defs
+    ]
+    _defender_inputs = [
+        mo.ui.number(
+            start=0,
+            stop=30,
+            step=1,
+            value=_mod_info["defender_defaults"].get(u["code"], 0),
+            label=f"{u['name']} ({u['cost']} credits)",
+            full_width=False,
+        )
+        for u in _defender_defs
+    ]
+
+    attacker_ui = mo.ui.array(_attacker_inputs, label="Attacker roster")
+    defender_ui = mo.ui.array(_defender_inputs, label="Defender roster")
+
+    def _unit_rows(units, inputs):
+        return mo.vstack(
+            [
+                mo.hstack(
+                    [
+                        mo.image(
+                            unit["icon"],
+                            alt=unit["name"],
+                            width=48,
+                            rounded=True,
+                        ),
+                        control,
+                    ],
+                    align="center",
+                    justify="start",
+                    gap=0.75,
+                )
+                for unit, control in zip(units, inputs)
+            ],
+            align="start",
+            gap=0.35,
+        )
+
+    attacker_roster = _unit_rows(_attacker_defs, _attacker_inputs)
+    defender_roster = _unit_rows(_defender_defs, _defender_inputs)
+    return attacker_roster, attacker_ui, defender_roster, defender_ui
 
 
 @app.cell
@@ -134,9 +183,16 @@ def run_battle(
     set_battle,
 ):
     _mod_info = MODS[mod_picker.value]
-    _roster_defs = _mod_info["units"]
-    _attacker_counts = [(u["code"], v) for u, v in zip(_roster_defs, attacker_ui.value)]
-    _defender_counts = [(u["code"], v) for u, v in zip(_roster_defs, defender_ui.value)]
+    _attacker_defs = _mod_info["attacker_units"]
+    _defender_defs = _mod_info["defender_units"]
+    _attacker_counts = [
+        (u["code"], int(v or 0))
+        for u, v in zip(_attacker_defs, attacker_ui.value)
+    ]
+    _defender_counts = [
+        (u["code"], int(v or 0))
+        for u, v in zip(_defender_defs, defender_ui.value)
+    ]
 
     if fight_btn.value:
         if sum(v for _, v in _attacker_counts) == 0 or sum(v for _, v in _defender_counts) == 0:
@@ -237,10 +293,10 @@ def video(battle, mo):
 @app.cell
 def layout(
     MODS,
-    attacker_ui,
+    attacker_roster,
     battle_status,
     battle_video,
-    defender_ui,
+    defender_roster,
     fight_btn,
     kills_chart,
     mo,
@@ -253,18 +309,31 @@ def layout(
     mo.vstack(
         [
             mo.md("# Opera Battles - arena widget"),
-            mo.hstack([mod_picker, seed_input, fight_btn], justify="start"),
+            mo.hstack([mod_picker, seed_input, fight_btn], justify="start", align="center"),
             mo.hstack(
                 [
-                    mo.vstack([mo.md(f"### Attacker - {_info['attacker']}"), attacker_ui]),
-                    mo.vstack([mo.md(f"### Defender - {_info['defender']}"), defender_ui]),
+                    mo.vstack(
+                        [mo.md(f"### Attacker - {_info['attacker']}"), attacker_roster],
+                        align="start",
+                        gap=0.75,
+                    ),
+                    mo.vstack(
+                        [mo.md(f"### Defender - {_info['defender']}"), defender_roster],
+                        align="start",
+                        gap=0.75,
+                    ),
                 ],
                 align="start",
+                widths="equal",
+                wrap=True,
+                gap=1.5,
             ),
             battle_status,
             battle_video,
-            mo.hstack([strength_chart, kills_chart], align="start"),
-        ]
+            mo.hstack([strength_chart, kills_chart], align="start", wrap=True),
+        ],
+        align="stretch",
+        gap=1,
     )
     return
 
