@@ -83,6 +83,7 @@ def unit_data(Path, json):
             "label": "Tiberian Dawn",
             "attacker": "NOD",
             "defender": "GDI",
+            "colors": {"Attacker": "#FE1100", "Defender": "#5B7FE7"},
             "attacker_units": _make_units(_nod_codes),
             "defender_units": _make_units(_gdi_codes),
             "attacker_defaults": {"bggy": 4, "bike": 4},
@@ -168,52 +169,60 @@ def rosters(MODS, mo, mod_picker):
     attacker_roster = _unit_rows(_attacker_defs, attacker_ui.elements)
     defender_roster = _unit_rows(_defender_defs, defender_ui.elements)
 
-    run_request = {"spec": None}
+    fight_btn = mo.ui.run_button(label="Fight")
+    return (
+        attacker_roster,
+        attacker_ui,
+        defender_roster,
+        defender_ui,
+        fight_btn,
+        save_replay,
+        seed_input,
+    )
 
-    def _capture_run_request(_value):
-        run_request["spec"] = {
+
+@app.cell
+def run_battle(
+    MODS,
+    battle_driver,
+    attacker_ui,
+    defender_ui,
+    fight_btn,
+    get_battle,
+    mod_picker,
+    save_replay,
+    seed_input,
+    set_battle,
+):
+    if fight_btn.value:
+        _mod_info = MODS[mod_picker.value]
+        _spec = {
             "mod": mod_picker.value,
             "attacker": [
                 {"type": unit["code"], "count": int(value or 0)}
-                for unit, value in zip(_attacker_defs, attacker_ui.value)
+                for unit, value in zip(_mod_info["attacker_units"], attacker_ui.value)
             ],
             "defender": [
                 {"type": unit["code"], "count": int(value or 0)}
-                for unit, value in zip(_defender_defs, defender_ui.value)
+                for unit, value in zip(_mod_info["defender_units"], defender_ui.value)
             ],
             "grid_cols": 4,
             "seed": int(seed_input.value or 0),
             "save_replay": bool(save_replay.value),
         }
-
-    fight_btn = mo.ui.run_button(label="Fight", on_change=_capture_run_request)
-    return attacker_roster, defender_roster, fight_btn, run_request, save_replay, seed_input
-
-
-@app.cell
-def run_battle(
-    battle_driver,
-    fight_btn,
-    get_battle,
-    run_request,
-    set_battle,
-):
-    if fight_btn.value:
-        _spec = run_request["spec"]
-        if _spec is not None:
-            if (
-                sum(group["count"] for group in _spec["attacker"]) == 0
-                or sum(group["count"] for group in _spec["defender"]) == 0
-            ):
-                set_battle({"error": "Both armies need at least one unit."})
-            else:
-                set_battle(
-                    battle_driver.run_battle(
-                        _spec,
-                        record=True,
-                        save_replay=_spec["save_replay"],
-                    )
+        if (
+            sum(group["count"] for group in _spec["attacker"]) == 0
+            or sum(group["count"] for group in _spec["defender"]) == 0
+        ):
+            set_battle({"error": "Both armies need at least one unit."})
+        else:
+            set_battle(
+                battle_driver.run_battle(
+                    _spec,
+                    record=True,
+                    save_replay=_spec["save_replay"],
                 )
+            )
 
     battle = get_battle()
     return (battle,)
@@ -229,17 +238,33 @@ def status(MODS, battle, mo):
         _info = MODS.get(battle.get("mod"), {})
         _atk = _info.get("attacker", "Attacker")
         _def = _info.get("defender", "Defender")
+        _colors = _info.get("colors", {})
+        _atk_color = _colors.get("Attacker", "#FE1100")
+        _def_color = _colors.get("Defender", "#5B7FE7")
         if "winner" in battle:
             _surv = battle.get("survivors", {})
             _spawn = battle.get("spawned", {})
             _seed = battle.get("seed", "?")
             _kills = len(battle.get("kills", []))
+            _atk_spawned = _spawn.get("Attacker", 0)
+            _def_spawned = _spawn.get("Defender", 0)
+            _atk_survivors = _surv.get("Attacker", 0)
+            _def_survivors = _surv.get("Defender", 0)
+            _result_table = (
+                "| Side | Survivors | Losses |\n"
+                "|:--|--:|--:|\n"
+                f'| <span style="color:{_atk_color}"><strong>Attacker - {_atk}</strong></span> | '
+                f"{_atk_survivors}/{_atk_spawned} | "
+                f"{_atk_spawned - _atk_survivors} |\n"
+                f'| <span style="color:{_def_color}"><strong>Defender - {_def}</strong></span> | '
+                f"{_def_survivors}/{_def_spawned} | "
+                f"{_def_spawned - _def_survivors} |"
+            )
             battle_status = mo.callout(
                 mo.md(
                     f"**{battle['winner']}** wins in {battle['ticks']} ticks "
-                    f"({_atk} {_surv.get('Attacker', '?')}/{_spawn.get('Attacker', '?')} alive vs "
-                    f"{_def} {_surv.get('Defender', '?')}/{_spawn.get('Defender', '?')} alive) "
-                    f"- seed {_seed}, {_kills} kills"
+                    f"- seed {_seed}, {_kills} kills\n\n"
+                    f"{_result_table}"
                 ),
                 kind="success",
             )
@@ -249,8 +274,9 @@ def status(MODS, battle, mo):
 
 
 @app.cell
-def strength_chart(alt, battle, mo, pl):
+def strength_chart(MODS, alt, battle, mo, pl):
     if battle and battle.get("strength"):
+        _colors = MODS.get(battle.get("mod"), {}).get("colors", {})
         _plot_df = pl.DataFrame(battle["strength"]).unpivot(
             index=["tick"], on=["Attacker", "Defender"], variable_name="Side", value_name="Strength"
         )
@@ -260,7 +286,16 @@ def strength_chart(alt, battle, mo, pl):
             .encode(
                 x=alt.X("tick:Q", title="Tick"),
                 y=alt.Y("Strength:Q", title="Combined HP%"),
-                color="Side:N",
+                color=alt.Color(
+                    "Side:N",
+                    scale=alt.Scale(
+                        domain=["Attacker", "Defender"],
+                        range=[
+                            _colors.get("Attacker", "#FE1100"),
+                            _colors.get("Defender", "#5B7FE7"),
+                        ],
+                    ),
+                ),
             )
             .properties(height=280)
         )
@@ -270,8 +305,9 @@ def strength_chart(alt, battle, mo, pl):
 
 
 @app.cell
-def kills_chart(alt, battle, mo, pl):
+def kills_chart(MODS, alt, battle, mo, pl):
     if battle and battle.get("kills"):
+        _colors = MODS.get(battle.get("mod"), {}).get("colors", {})
         _kill_df = pl.DataFrame(battle["kills"]).group_by("side", "victim").len()
         kills_chart = (
             alt.Chart(_kill_df, title="Losses by unit type")
@@ -279,7 +315,17 @@ def kills_chart(alt, battle, mo, pl):
             .encode(
                 x=alt.X("len:Q", title="Units lost"),
                 y=alt.Y("victim:N", sort="-x", title="Unit"),
-                color=alt.Color("side:N", title="Side"),
+                color=alt.Color(
+                    "side:N",
+                    title="Side",
+                    scale=alt.Scale(
+                        domain=["Attacker", "Defender"],
+                        range=[
+                            _colors.get("Attacker", "#FE1100"),
+                            _colors.get("Defender", "#5B7FE7"),
+                        ],
+                    ),
+                ),
                 tooltip=["side:N", "victim:N", "len:Q"],
             )
             .properties(height=280)

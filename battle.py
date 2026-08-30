@@ -82,8 +82,19 @@ def render_config(cfg: dict) -> None:
 def install_map() -> str:
     if M.map_dst.exists():
         shutil.rmtree(M.map_dst)
-    shutil.copytree(M.map_src, M.map_dst)
-    shutil.copy(ROOT / "maps/battle.lua", M.map_dst / "battle.lua")
+    M.map_dst.mkdir(parents=True)
+    # Copy contents rather than metadata. copytree/copy2 can carry the host's
+    # SELinux label into a bind-mounted engine, making the map undeletable on
+    # the next run under rootless Podman.
+    for src in M.map_src.iterdir():
+        if src.is_file():
+            dst = M.map_dst / src.name
+            shutil.copyfile(src, dst)
+            os.chmod(dst, src.stat().st_mode & 0o7777)
+    battle_src = ROOT / "maps/battle.lua"
+    battle_dst = M.map_dst / "battle.lua"
+    shutil.copyfile(battle_src, battle_dst)
+    os.chmod(battle_dst, battle_src.stat().st_mode & 0o7777)
     out = sh(
         [str(M.utility), "--map-hash", str(M.map_dst)],
         check=True,
@@ -194,9 +205,11 @@ def launch_game(map_uid: str, record: bool) -> None:
 
 def start_recording(out_mp4: Path):
     return subprocess.Popen(
-        ["ffmpeg", "-y", "-f", "x11grab", "-video_size", f"{SCREEN_W}x{SCREEN_H}",
+        ["ffmpeg", "-y", "-loglevel", "error", "-f", "x11grab",
+         "-thread_queue_size", "8", "-video_size", f"{SCREEN_W}x{SCREEN_H}",
          "-framerate", "25", "-i", DISPLAY,
          "-c:v", "libvpx-vp9", "-deadline", "realtime", "-cpu-used", "8",
+         "-pix_fmt", "yuv420p",
          "-b:v", "1500k", "-maxrate", "1500k", "-bufsize", "3000k",
          str(out_mp4)],
         stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
@@ -205,16 +218,25 @@ def start_recording(out_mp4: Path):
     )
 
 
-def stop_recording(proc) -> str:
-    proc.send_signal(signal.SIGINT)
+def stop_recording(proc) -> tuple[str, bool]:
+    forced = False
+    try:
+        proc.send_signal(signal.SIGINT)
+    except ProcessLookupError:
+        pass
     try:
         proc.wait(timeout=30)
     except subprocess.TimeoutExpired:
-        proc.kill()
+        forced = True
+        # A stuck encoder should not keep the battle cell running forever.
+        try:
+            proc.kill()
+        except ProcessLookupError:
+            pass
         proc.wait()
     if proc.stderr is None:
-        return ""
-    return proc.stderr.read().decode(errors="replace")
+        return "", forced
+    return proc.stderr.read().decode(errors="replace"), forced
 
 
 LINE_RE = re.compile(r"E\|(\w+)\s*(.*)")
@@ -301,22 +323,38 @@ def run_battle(spec: dict, record: bool = True, save_replay: bool = False,
     )
     rec = start_recording(recording_tmp) if recording_tmp else None
     recording_stderr = ""
+    recording_forced = False
     recording_committed = False
     try:
         try:
             events, result, frames = tail_until_done(timeout)
         finally:
             if rec is not None:
-                recording_stderr = stop_recording(rec)
+                recording_stderr, recording_forced = stop_recording(rec)
             stop_game()
 
         recording_stopped_cleanly = (
             rec is not None
             and rec.returncode == 255
-            and "Exiting normally, received signal 2." in recording_stderr
+            and not recording_forced
+            and (
+                "Exiting normally, received signal 2." in recording_stderr
+                or not recording_stderr.strip()
+            )
         )
         if rec is not None and rec.returncode != 0 and not recording_stopped_cleanly:
             detail = recording_stderr.strip()
+            if recording_forced:
+                detail = (
+                    "ffmpeg did not exit after SIGINT and was force-killed"
+                    + (f"; {detail[-1000:]}" if detail else "")
+                )
+            elif rec.returncode == -signal.SIGKILL:
+                detail = (
+                    "ffmpeg was terminated by SIGKILL, likely by the container's "
+                    "OOM killer or another resource limit"
+                    + (f"; {detail[-1000:]}" if detail else "")
+                )
             raise RuntimeError(
                 f"ffmpeg recording failed with exit code {rec.returncode}"
                 + (f": {detail[-1000:]}" if detail else "")
