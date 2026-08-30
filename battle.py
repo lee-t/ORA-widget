@@ -200,16 +200,21 @@ def start_recording(out_mp4: Path):
          "-b:v", "1500k", "-maxrate", "1500k", "-bufsize", "3000k",
          str(out_mp4)],
         stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL, start_new_session=True,
+        stderr=subprocess.PIPE, start_new_session=True,
+        env=dict(os.environ, DISPLAY=DISPLAY),
     )
 
 
-def stop_recording(proc) -> None:
+def stop_recording(proc) -> str:
     proc.send_signal(signal.SIGINT)
     try:
         proc.wait(timeout=30)
     except subprocess.TimeoutExpired:
         proc.kill()
+        proc.wait()
+    if proc.stderr is None:
+        return ""
+    return proc.stderr.read().decode(errors="replace")
 
 
 LINE_RE = re.compile(r"E\|(\w+)\s*(.*)")
@@ -272,10 +277,12 @@ def tail_until_done(timeout: int = 360):
     raise TimeoutError(f"no E|DONE within {timeout}s")
 
 
-def run_battle(spec: dict, record: bool = True, timestep: int | None = None,
-               timeout: int = 360) -> dict:
+def run_battle(spec: dict, record: bool = True, save_replay: bool = False,
+               timestep: int | None = None, timeout: int = 360) -> dict:
     global M
     M = MODS[spec.get("mod", "cnc")]
+    if save_replay and not record:
+        raise ValueError("save_replay requires recording to be enabled")
     timestep = int(timestep or (DEFAULT_TIMESTEP_RECORDING if record
                                 else DEFAULT_TIMESTEP_HEADLESS))
     started = time.time()
@@ -288,13 +295,51 @@ def run_battle(spec: dict, record: bool = True, timestep: int | None = None,
 
     OUT_DIR.mkdir(exist_ok=True)
     out_mp4 = OUT_DIR / "battle.webm"
-    rec = start_recording(out_mp4) if record else None
+    recording_tmp = (
+        OUT_DIR / f".battle-{os.getpid()}-{time.time_ns()}.webm"
+        if record else None
+    )
+    rec = start_recording(recording_tmp) if recording_tmp else None
+    recording_stderr = ""
+    recording_committed = False
     try:
-        events, result, frames = tail_until_done(timeout)
+        try:
+            events, result, frames = tail_until_done(timeout)
+        finally:
+            if rec is not None:
+                recording_stderr = stop_recording(rec)
+            stop_game()
+
+        recording_stopped_cleanly = (
+            rec is not None
+            and rec.returncode == 255
+            and "Exiting normally, received signal 2." in recording_stderr
+        )
+        if rec is not None and rec.returncode != 0 and not recording_stopped_cleanly:
+            detail = recording_stderr.strip()
+            raise RuntimeError(
+                f"ffmpeg recording failed with exit code {rec.returncode}"
+                + (f": {detail[-1000:]}" if detail else "")
+            )
+        if recording_tmp is not None:
+            if not recording_tmp.exists():
+                raise FileNotFoundError(
+                    f"ffmpeg did not produce recording {recording_tmp}"
+                )
+            os.replace(recording_tmp, out_mp4)
+            recording_committed = True
     finally:
-        if rec is not None:
-            stop_recording(rec)
-        stop_game()
+        if recording_tmp is not None and not recording_committed:
+            recording_tmp.unlink(missing_ok=True)
+
+    replay_path = None
+    if save_replay:
+        replay_dir = OUT_DIR / "replays"
+        replay_dir.mkdir(exist_ok=True)
+        replay_path = replay_dir / (
+            f"battle-seed-{spec.get('seed', 0)}-{time.time_ns()}.webm"
+        )
+        shutil.copy2(out_mp4, replay_path)
 
     units_meta = {int(e["id"]): e["side"] for e in events if e["kind"] == "UNIT"}
     dead = {int(e["id"]) for e in events if e["kind"] == "KILL"}
@@ -333,6 +378,7 @@ def run_battle(spec: dict, record: bool = True, timestep: int | None = None,
         "strength": strength,
         "duration_s": round(time.time() - started, 1),
         "video": str(out_mp4) if record else None,
+        "replay": str(replay_path) if replay_path else None,
         "map_uid": uid,
         "result": result,
     }
@@ -349,6 +395,8 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--grid-cols", type=int, default=4)
     ap.add_argument("--no-record", action="store_true")
+    ap.add_argument("--save-replay", action="store_true",
+                    help="save a uniquely named copy under out/replays")
     ap.add_argument("--timestep", type=int)
     ap.add_argument("--timeout", type=int, default=360)
     args = ap.parse_args()
@@ -362,6 +410,7 @@ def main() -> None:
                 "seed": args.seed, "grid_cols": args.grid_cols}
 
     stats = run_battle(spec, record=not args.no_record,
+                       save_replay=args.save_replay,
                        timestep=args.timestep, timeout=args.timeout)
     print(json.dumps({k: v for k, v in stats.items() if k != "strength"}, indent=2))
 

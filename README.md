@@ -76,14 +76,16 @@ uv run --script ora_widget.py
 ```
 
 Open the local URL shown by Marimo. Set the seed and unit counts, then select
-**Fight**. The default battle uses the bundled `data/units_cnc.json` file.
+**Fight**. Enable **Save replay copy** to keep a uniquely named copy in
+`out/replays/`. The default battle uses the bundled `data/units_cnc.json` file.
 
 ## Outputs
 
 The battle driver writes:
 
 - `out/stats.json`: battle events and summary data
-- `out/battle.webm`: the recorded replay
+- `out/battle.webm`: the latest recorded replay, overwritten on each run
+- `out/replays/`: optional uniquely named replay copies
 
 Each run also updates generated runtime files in `maps/arena-cnc` and
 `.run_openra.sh`.
@@ -100,6 +102,12 @@ Skip video recording for a faster run:
 
 ```bash
 uv run battle.py --config battles/demo-cnc.json --no-record
+```
+
+Save a uniquely named replay copy while still updating `out/battle.webm`:
+
+```bash
+uv run battle.py --config battles/demo-cnc.json --save-replay
 ```
 
 ## Unit Data

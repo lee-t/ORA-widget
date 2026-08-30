@@ -105,9 +105,7 @@ def controls(MODS, mo):
         value="Tiberian Dawn",
         label="Game",
     )
-    seed_input = mo.ui.number(start=0, stop=9999, step=1, value=1, label="Seed")
-    fight_btn = mo.ui.run_button(label="Fight")
-    return fight_btn, mod_picker, seed_input
+    return (mod_picker,)
 
 
 @app.cell
@@ -115,6 +113,8 @@ def rosters(MODS, mo, mod_picker):
     _mod_info = MODS[mod_picker.value]
     _attacker_defs = _mod_info["attacker_units"]
     _defender_defs = _mod_info["defender_units"]
+    seed_input = mo.ui.number(start=0, stop=9999, step=1, value=1, label="Seed")
+    save_replay = mo.ui.checkbox(label="Save replay copy", value=False)
 
     _attacker_inputs = [
         mo.ui.number(
@@ -165,47 +165,55 @@ def rosters(MODS, mo, mod_picker):
             gap=0.35,
         )
 
-    attacker_roster = _unit_rows(_attacker_defs, _attacker_inputs)
-    defender_roster = _unit_rows(_defender_defs, _defender_inputs)
-    return attacker_roster, attacker_ui, defender_roster, defender_ui
+    attacker_roster = _unit_rows(_attacker_defs, attacker_ui.elements)
+    defender_roster = _unit_rows(_defender_defs, defender_ui.elements)
+
+    run_request = {"spec": None}
+
+    def _capture_run_request(_value):
+        run_request["spec"] = {
+            "mod": mod_picker.value,
+            "attacker": [
+                {"type": unit["code"], "count": int(value or 0)}
+                for unit, value in zip(_attacker_defs, attacker_ui.value)
+            ],
+            "defender": [
+                {"type": unit["code"], "count": int(value or 0)}
+                for unit, value in zip(_defender_defs, defender_ui.value)
+            ],
+            "grid_cols": 4,
+            "seed": int(seed_input.value or 0),
+            "save_replay": bool(save_replay.value),
+        }
+
+    fight_btn = mo.ui.run_button(label="Fight", on_change=_capture_run_request)
+    return attacker_roster, defender_roster, fight_btn, run_request, save_replay, seed_input
 
 
 @app.cell
 def run_battle(
-    MODS,
-    attacker_ui,
     battle_driver,
-    defender_ui,
     fight_btn,
     get_battle,
-    mod_picker,
-    seed_input,
+    run_request,
     set_battle,
 ):
-    _mod_info = MODS[mod_picker.value]
-    _attacker_defs = _mod_info["attacker_units"]
-    _defender_defs = _mod_info["defender_units"]
-    _attacker_counts = [
-        (u["code"], int(v or 0))
-        for u, v in zip(_attacker_defs, attacker_ui.value)
-    ]
-    _defender_counts = [
-        (u["code"], int(v or 0))
-        for u, v in zip(_defender_defs, defender_ui.value)
-    ]
-
     if fight_btn.value:
-        if sum(v for _, v in _attacker_counts) == 0 or sum(v for _, v in _defender_counts) == 0:
-            set_battle({"error": "Both armies need at least one unit."})
-        else:
-            _spec = {
-                "mod": mod_picker.value,
-                "attacker": [{"type": t, "count": n} for t, n in _attacker_counts],
-                "defender": [{"type": t, "count": n} for t, n in _defender_counts],
-                "grid_cols": 4,
-                "seed": int(seed_input.value),
-            }
-            set_battle(battle_driver.run_battle(_spec, record=True))
+        _spec = run_request["spec"]
+        if _spec is not None:
+            if (
+                sum(group["count"] for group in _spec["attacker"]) == 0
+                or sum(group["count"] for group in _spec["defender"]) == 0
+            ):
+                set_battle({"error": "Both armies need at least one unit."})
+            else:
+                set_battle(
+                    battle_driver.run_battle(
+                        _spec,
+                        record=True,
+                        save_replay=_spec["save_replay"],
+                    )
+                )
 
     battle = get_battle()
     return (battle,)
@@ -301,6 +309,7 @@ def layout(
     kills_chart,
     mo,
     mod_picker,
+    save_replay,
     seed_input,
     strength_chart,
 ):
@@ -309,7 +318,11 @@ def layout(
     mo.vstack(
         [
             mo.md("# Opera Battles - arena widget"),
-            mo.hstack([mod_picker, seed_input, fight_btn], justify="start", align="center"),
+            mo.hstack(
+                [mod_picker, seed_input, save_replay, fight_btn],
+                justify="start",
+                align="center",
+            ),
             mo.hstack(
                 [
                     mo.vstack(

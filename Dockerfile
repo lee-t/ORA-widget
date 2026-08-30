@@ -5,7 +5,7 @@ ENV HOME=/root \
     UV_PYTHON_INSTALL_DIR=/opt/uv-python \
     OPENRA_RELEASE=release-20250330 \
     OPENRA_APPIMAGE_SHA256=b3d202d1bf701be5989c41c256d19bd2b1788694df01e343ade865cf1190706b \
-    CNC_CONTENT_URL=https://openra.ppmsite.com/cnc-packages.zip \
+    CNC_CONTENT_URL=https://republic.community/hosted/files/command-and-conquer/openra/cnc-packages.zip \
     CNC_CONTENT_SHA256=a55b2c160b534f6d1b865ad6120e1f4fde8c418d47bb2fb1a9c72c586a5e1603 \
     PORT=2718
 
