@@ -214,5 +214,11 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
+# Runtime caches and generated battle files
+engine/
+out/
+.run_openra.sh
+maps/arena-cnc/config.lua
+
 # Streamlit
 .streamlit/secrets.toml

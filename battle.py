@@ -141,8 +141,9 @@ def stop_game() -> None:
         finally:
             GAME_PROCESS = None
         return
-    sh(["systemctl", "--user", "stop", GAME_UNIT])
-    sh(["systemctl", "--user", "reset-failed", GAME_UNIT])
+    if shutil.which("systemctl") is not None:
+        sh(["systemctl", "--user", "stop", GAME_UNIT])
+        sh(["systemctl", "--user", "reset-failed", GAME_UNIT])
 
 
 def launch_game(map_uid: str, record: bool) -> None:
@@ -171,11 +172,14 @@ def launch_game(map_uid: str, record: bool) -> None:
     runner.chmod(0o755)
 
     stop_game()
-    _systemd = subprocess.run(
-        ["systemd-run", "--user", f"--unit={GAME_UNIT}", "--collect", str(runner)],
-        capture_output=True, text=True,
-    )
-    if _systemd.returncode == 0:
+    try:
+        _systemd = subprocess.run(
+            ["systemd-run", "--user", f"--unit={GAME_UNIT}", "--collect", str(runner)],
+            capture_output=True, text=True,
+        )
+    except FileNotFoundError:
+        _systemd = None
+    if _systemd is not None and _systemd.returncode == 0:
         return
 
     # Molab containers do not run a user systemd manager.

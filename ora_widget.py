@@ -2,7 +2,7 @@
 # dependencies = [
 #     "altair==6.2.2",
 #     "anywidget==0.11.0",
-#     "marimo",
+#     "marimo==0.24.0",
 #     "polars==1.43.2",
 #     "traitlets==5.16.1",
 # ]

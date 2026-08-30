@@ -1,0 +1,21 @@
+- Added Dockerfile using a digest-pinned amd64 uv image.
+- Installs exact Python 3.14.6.
+- Added hash-locked Python dependencies in requirements.lock.
+- Added hash-locked uv bootstrap dependency in docker/uv.lock.
+- Added docker/entrypoint.sh with:
+- SHA-256 verification for OpenRA and CNC content.
+- Versioned cache markers.
+- Temporary extraction directories and validated replacement.
+- Explicit amd64 and port validation.
+- No runtime dependency resolution.
+- Added docker-compose.yml with:
+- linux/amd64 platform declaration.
+- localhost-only port binding.
+- SELinux-compatible :Z bind mounts for Podman.
+- Read-only battle specifications.
+- Healthcheck.
+- Added .dockerignore.
+- Updated .gitignore to exclude runtime engine, output, and generated files.
+- Removed previously tracked engine/output artifacts and generated config.lua.
+- Hardened battle.py so the documented no-systemd fallback works when systemctl and systemd-run are absent.
+- Updated README.md and dockerize-plan.md.
