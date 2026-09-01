@@ -380,13 +380,14 @@ def run_battle(spec: dict, record: bool = True, save_replay: bool = False,
         shutil.copy2(out_mp4, replay_path)
 
     units_meta = {int(e["id"]): e["side"] for e in events if e["kind"] == "UNIT"}
-    dead = {int(e["id"]) for e in events if e["kind"] == "KILL"}
     strength = []
     for fr in frames:
         sums = {"Attacker": 0, "Defender": 0}
         for uid_, _x, _y, hp in fr["units"]:
             side = units_meta.get(uid_)
-            if side and uid_ not in dead:
+            # Frames already omit units that are dead at that point in time.
+            # Filtering by the final kill set would erase their earlier HP.
+            if side:
                 sums[side] += hp
         strength.append({"tick": fr["tick"], **sums})
 
