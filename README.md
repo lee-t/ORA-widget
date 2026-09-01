@@ -4,9 +4,15 @@
 It uses the Tiberian Dawn mod. You choose the armies and seed, then view:
 
 - the winner and survivor count
+- an HP-retention payoff matrix of surviving units by type
 - army strength over time
 - losses by unit type
 - a recorded battle
+
+The payoff matrix reports each unit type's retained HP-equivalent as a fraction
+of the number of that type fielded:
+`sum(hp_remaining / hp_max) / units_fielded`. Its tooltip also reports surviving
+credit value and contribution to the side's fielded credits.
 
 ## Quick Start (Docker/Podman)
 

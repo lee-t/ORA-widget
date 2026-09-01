@@ -11,6 +11,7 @@ Stdlib only.
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import json
 import os
 import re
@@ -269,6 +270,63 @@ def parse_frame(line: str):
     return {"tick": tick, "units": units}
 
 
+def summarize_unit_results(
+    events: list[dict],
+) -> tuple[dict[str, dict[str, int]], dict[str, dict[str, int]]]:
+    """Return spawned and surviving counts by side and unit type.
+
+    UNIT and KILL events are already retained for the battle summary, so this
+    derives the per-type result without adding simulation-side state or log
+    traffic.
+    """
+    spawned = {"Attacker": Counter(), "Defender": Counter()}
+    lost = {"Attacker": Counter(), "Defender": Counter()}
+    for event in events:
+        side = event.get("side")
+        if side not in spawned:
+            continue
+        kind = event.get("kind")
+        if kind == "UNIT":
+            unit_type = event.get("type")
+            if unit_type:
+                spawned[side][unit_type] += 1
+        elif kind == "KILL":
+            unit_type = event.get("unit")
+            if unit_type:
+                lost[side][unit_type] += 1
+
+    spawned_by_type = {side: dict(counts) for side, counts in spawned.items()}
+    survivors_by_type = {
+        side: {
+            unit_type: max(count - lost[side][unit_type], 0)
+            for unit_type, count in counts.items()
+        }
+        for side, counts in spawned.items()
+    }
+    return spawned_by_type, survivors_by_type
+
+
+def summarize_survivor_hp(
+    units_meta: dict[int, tuple[str, str]],
+    frames: list[dict],
+) -> dict[str, dict[str, float]]:
+    """Return surviving HP fractions by side and unit type.
+
+    The final sampled frame contains only units still in the world. Keeping
+    only these type aggregates avoids retaining another per-unit result.
+    """
+    survivor_hp = {"Attacker": Counter(), "Defender": Counter()}
+    if not frames:
+        return {side: dict(values) for side, values in survivor_hp.items()}
+
+    for uid_, _x, _y, hp in frames[-1]["units"]:
+        unit_meta = units_meta.get(uid_)
+        if unit_meta:
+            side, unit_type = unit_meta
+            survivor_hp[side][unit_type] += max(hp, 0) / 100
+    return {side: dict(values) for side, values in survivor_hp.items()}
+
+
 def tail_until_done(timeout: int = 360):
     events, result, frames = [], None, []
     start = time.time()
@@ -379,12 +437,19 @@ def run_battle(spec: dict, record: bool = True, save_replay: bool = False,
         )
         shutil.copy2(out_mp4, replay_path)
 
-    units_meta = {int(e["id"]): e["side"] for e in events if e["kind"] == "UNIT"}
+    units_meta = {
+        int(e["id"]): (e["side"], e["type"])
+        for e in events
+        if e["kind"] == "UNIT"
+    }
+    spawned_by_type, survivors_by_type = summarize_unit_results(events)
+    survivor_hp_by_type = summarize_survivor_hp(units_meta, frames)
     strength = []
     for fr in frames:
         sums = {"Attacker": 0, "Defender": 0}
         for uid_, _x, _y, hp in fr["units"]:
-            side = units_meta.get(uid_)
+            unit_meta = units_meta.get(uid_)
+            side = unit_meta[0] if unit_meta else None
             # Frames already omit units that are dead at that point in time.
             # Filtering by the final kill set would erase their earlier HP.
             if side:
@@ -393,22 +458,28 @@ def run_battle(spec: dict, record: bool = True, save_replay: bool = False,
 
     atk_spawned = int((result or {}).get("atk_spawned", 0))
     def_spawned = int((result or {}).get("def_spawned", 0))
+    spawned = {
+        "Attacker": sum(spawned_by_type["Attacker"].values()) or atk_spawned,
+        "Defender": sum(spawned_by_type["Defender"].values()) or def_spawned,
+    }
     stats = {
         "mod": M.mod,
         "seed": spec.get("seed", 0),
+        "roster": {
+            "Attacker": spec.get("attacker", []),
+            "Defender": spec.get("defender", []),
+        },
         "winner": (result or {}).get("winner", "Unknown"),
         "ticks": frames[-1]["tick"] if frames else 0,
         "ticks_per_second": 1000 // timestep,
-        "spawned": {
-            "Attacker": sum(1 for e in events if e["kind"] == "UNIT" and e["side"] == "Attacker")
-            or atk_spawned,
-            "Defender": sum(1 for e in events if e["kind"] == "UNIT" and e["side"] == "Defender")
-            or def_spawned,
-        },
+        "spawned": spawned,
+        "spawned_by_type": spawned_by_type,
         "survivors": {
-            "Attacker": atk_spawned - int((result or {}).get("atk_lost", 0)),
-            "Defender": def_spawned - int((result or {}).get("def_lost", 0)),
+            "Attacker": sum(survivors_by_type["Attacker"].values()),
+            "Defender": sum(survivors_by_type["Defender"].values()),
         },
+        "survivors_by_type": survivors_by_type,
+        "survivor_hp_by_type": survivor_hp_by_type,
         "kills": [
             {"tick": int(e["tick"]), "side": e["side"], "victim": e["unit"],
              "killer": e["killer"]}
