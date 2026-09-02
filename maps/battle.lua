@@ -198,6 +198,7 @@ WorldLoaded = function()
 
 	Trigger.AfterDelay(DateTime.Minutes(5), function()
 		if not BattleOver then
+			SampleFrame()
 			BattleOver = true
 			Emit("RESULT", { winner = "Timeout" })
 			Emit("DONE", {})

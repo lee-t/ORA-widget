@@ -1,0 +1,22 @@
+services:
+  ora-widget:
+    platform: linux/amd64
+    build:
+      context: .
+    ports:
+      - "127.0.0.1:${HOST_PORT:-2718}:2718"
+    environment:
+      PORT: "2718"
+    volumes:
+      - ./engine:/app/engine:Z
+      - openra-config:/root/.config/openra
+      - ./out:/app/out:Z
+      - ./battles:/app/battles:ro,Z
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://127.0.0.1:2718"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  openra-config:

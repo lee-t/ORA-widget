@@ -1,0 +1,12 @@
+.git
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose.yml
+engine/
+out/
+__pycache__/
+*.pyc
+.run_openra.sh
+.venv/
+*.egg-info/

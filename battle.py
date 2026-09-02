@@ -11,6 +11,7 @@ Stdlib only.
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import json
 import os
 import re
@@ -82,8 +83,19 @@ def render_config(cfg: dict) -> None:
 def install_map() -> str:
     if M.map_dst.exists():
         shutil.rmtree(M.map_dst)
-    shutil.copytree(M.map_src, M.map_dst)
-    shutil.copy(ROOT / "maps/battle.lua", M.map_dst / "battle.lua")
+    M.map_dst.mkdir(parents=True)
+    # Copy contents rather than metadata. copytree/copy2 can carry the host's
+    # SELinux label into a bind-mounted engine, making the map undeletable on
+    # the next run under rootless Podman.
+    for src in M.map_src.iterdir():
+        if src.is_file():
+            dst = M.map_dst / src.name
+            shutil.copyfile(src, dst)
+            os.chmod(dst, src.stat().st_mode & 0o7777)
+    battle_src = ROOT / "maps/battle.lua"
+    battle_dst = M.map_dst / "battle.lua"
+    shutil.copyfile(battle_src, battle_dst)
+    os.chmod(battle_dst, battle_src.stat().st_mode & 0o7777)
     out = sh(
         [str(M.utility), "--map-hash", str(M.map_dst)],
         check=True,
@@ -141,8 +153,9 @@ def stop_game() -> None:
         finally:
             GAME_PROCESS = None
         return
-    sh(["systemctl", "--user", "stop", GAME_UNIT])
-    sh(["systemctl", "--user", "reset-failed", GAME_UNIT])
+    if shutil.which("systemctl") is not None:
+        sh(["systemctl", "--user", "stop", GAME_UNIT])
+        sh(["systemctl", "--user", "reset-failed", GAME_UNIT])
 
 
 def launch_game(map_uid: str, record: bool) -> None:
@@ -171,11 +184,14 @@ def launch_game(map_uid: str, record: bool) -> None:
     runner.chmod(0o755)
 
     stop_game()
-    _systemd = subprocess.run(
-        ["systemd-run", "--user", f"--unit={GAME_UNIT}", "--collect", str(runner)],
-        capture_output=True, text=True,
-    )
-    if _systemd.returncode == 0:
+    try:
+        _systemd = subprocess.run(
+            ["systemd-run", "--user", f"--unit={GAME_UNIT}", "--collect", str(runner)],
+            capture_output=True, text=True,
+        )
+    except FileNotFoundError:
+        _systemd = None
+    if _systemd is not None and _systemd.returncode == 0:
         return
 
     # Molab containers do not run a user systemd manager.
@@ -190,22 +206,38 @@ def launch_game(map_uid: str, record: bool) -> None:
 
 def start_recording(out_mp4: Path):
     return subprocess.Popen(
-        ["ffmpeg", "-y", "-f", "x11grab", "-video_size", f"{SCREEN_W}x{SCREEN_H}",
+        ["ffmpeg", "-y", "-loglevel", "error", "-f", "x11grab",
+         "-thread_queue_size", "8", "-video_size", f"{SCREEN_W}x{SCREEN_H}",
          "-framerate", "25", "-i", DISPLAY,
          "-c:v", "libvpx-vp9", "-deadline", "realtime", "-cpu-used", "8",
+         "-pix_fmt", "yuv420p",
          "-b:v", "1500k", "-maxrate", "1500k", "-bufsize", "3000k",
          str(out_mp4)],
         stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL, start_new_session=True,
+        stderr=subprocess.PIPE, start_new_session=True,
+        env=dict(os.environ, DISPLAY=DISPLAY),
     )
 
 
-def stop_recording(proc) -> None:
-    proc.send_signal(signal.SIGINT)
+def stop_recording(proc) -> tuple[str, bool]:
+    forced = False
+    try:
+        proc.send_signal(signal.SIGINT)
+    except ProcessLookupError:
+        pass
     try:
         proc.wait(timeout=30)
     except subprocess.TimeoutExpired:
-        proc.kill()
+        forced = True
+        # A stuck encoder should not keep the battle cell running forever.
+        try:
+            proc.kill()
+        except ProcessLookupError:
+            pass
+        proc.wait()
+    if proc.stderr is None:
+        return "", forced
+    return proc.stderr.read().decode(errors="replace"), forced
 
 
 LINE_RE = re.compile(r"E\|(\w+)\s*(.*)")
@@ -238,6 +270,63 @@ def parse_frame(line: str):
     return {"tick": tick, "units": units}
 
 
+def summarize_unit_results(
+    events: list[dict],
+) -> tuple[dict[str, dict[str, int]], dict[str, dict[str, int]]]:
+    """Return spawned and surviving counts by side and unit type.
+
+    UNIT and KILL events are already retained for the battle summary, so this
+    derives the per-type result without adding simulation-side state or log
+    traffic.
+    """
+    spawned = {"Attacker": Counter(), "Defender": Counter()}
+    lost = {"Attacker": Counter(), "Defender": Counter()}
+    for event in events:
+        side = event.get("side")
+        if side not in spawned:
+            continue
+        kind = event.get("kind")
+        if kind == "UNIT":
+            unit_type = event.get("type")
+            if unit_type:
+                spawned[side][unit_type] += 1
+        elif kind == "KILL":
+            unit_type = event.get("unit")
+            if unit_type:
+                lost[side][unit_type] += 1
+
+    spawned_by_type = {side: dict(counts) for side, counts in spawned.items()}
+    survivors_by_type = {
+        side: {
+            unit_type: max(count - lost[side][unit_type], 0)
+            for unit_type, count in counts.items()
+        }
+        for side, counts in spawned.items()
+    }
+    return spawned_by_type, survivors_by_type
+
+
+def summarize_survivor_hp(
+    units_meta: dict[int, tuple[str, str]],
+    frames: list[dict],
+) -> dict[str, dict[str, float]]:
+    """Return surviving HP fractions by side and unit type.
+
+    The final sampled frame contains only units still in the world. Keeping
+    only these type aggregates avoids retaining another per-unit result.
+    """
+    survivor_hp = {"Attacker": Counter(), "Defender": Counter()}
+    if not frames:
+        return {side: dict(values) for side, values in survivor_hp.items()}
+
+    for uid_, _x, _y, hp in frames[-1]["units"]:
+        unit_meta = units_meta.get(uid_)
+        if unit_meta:
+            side, unit_type = unit_meta
+            survivor_hp[side][unit_type] += max(hp, 0) / 100
+    return {side: dict(values) for side, values in survivor_hp.items()}
+
+
 def tail_until_done(timeout: int = 360):
     events, result, frames = [], None, []
     start = time.time()
@@ -268,10 +357,12 @@ def tail_until_done(timeout: int = 360):
     raise TimeoutError(f"no E|DONE within {timeout}s")
 
 
-def run_battle(spec: dict, record: bool = True, timestep: int | None = None,
-               timeout: int = 360) -> dict:
+def run_battle(spec: dict, record: bool = True, save_replay: bool = False,
+               timestep: int | None = None, timeout: int = 360) -> dict:
     global M
     M = MODS[spec.get("mod", "cnc")]
+    if save_replay and not record:
+        raise ValueError("save_replay requires recording to be enabled")
     timestep = int(timestep or (DEFAULT_TIMESTEP_RECORDING if record
                                 else DEFAULT_TIMESTEP_HEADLESS))
     started = time.time()
@@ -284,43 +375,111 @@ def run_battle(spec: dict, record: bool = True, timestep: int | None = None,
 
     OUT_DIR.mkdir(exist_ok=True)
     out_mp4 = OUT_DIR / "battle.webm"
-    rec = start_recording(out_mp4) if record else None
+    recording_tmp = (
+        OUT_DIR / f".battle-{os.getpid()}-{time.time_ns()}.webm"
+        if record else None
+    )
+    rec = start_recording(recording_tmp) if recording_tmp else None
+    recording_stderr = ""
+    recording_forced = False
+    recording_committed = False
     try:
-        events, result, frames = tail_until_done(timeout)
-    finally:
-        if rec is not None:
-            stop_recording(rec)
-        stop_game()
+        try:
+            events, result, frames = tail_until_done(timeout)
+        finally:
+            if rec is not None:
+                recording_stderr, recording_forced = stop_recording(rec)
+            stop_game()
 
-    units_meta = {int(e["id"]): e["side"] for e in events if e["kind"] == "UNIT"}
-    dead = {int(e["id"]) for e in events if e["kind"] == "KILL"}
+        recording_stopped_cleanly = (
+            rec is not None
+            and rec.returncode == 255
+            and not recording_forced
+            and (
+                "Exiting normally, received signal 2." in recording_stderr
+                or not recording_stderr.strip()
+            )
+        )
+        if rec is not None and rec.returncode != 0 and not recording_stopped_cleanly:
+            detail = recording_stderr.strip()
+            if recording_forced:
+                detail = (
+                    "ffmpeg did not exit after SIGINT and was force-killed"
+                    + (f"; {detail[-1000:]}" if detail else "")
+                )
+            elif rec.returncode == -signal.SIGKILL:
+                detail = (
+                    "ffmpeg was terminated by SIGKILL, likely by the container's "
+                    "OOM killer or another resource limit"
+                    + (f"; {detail[-1000:]}" if detail else "")
+                )
+            raise RuntimeError(
+                f"ffmpeg recording failed with exit code {rec.returncode}"
+                + (f": {detail[-1000:]}" if detail else "")
+            )
+        if recording_tmp is not None:
+            if not recording_tmp.exists():
+                raise FileNotFoundError(
+                    f"ffmpeg did not produce recording {recording_tmp}"
+                )
+            os.replace(recording_tmp, out_mp4)
+            recording_committed = True
+    finally:
+        if recording_tmp is not None and not recording_committed:
+            recording_tmp.unlink(missing_ok=True)
+
+    replay_path = None
+    if save_replay:
+        replay_dir = OUT_DIR / "replays"
+        replay_dir.mkdir(exist_ok=True)
+        replay_path = replay_dir / (
+            f"battle-seed-{spec.get('seed', 0)}-{time.time_ns()}.webm"
+        )
+        shutil.copy2(out_mp4, replay_path)
+
+    units_meta = {
+        int(e["id"]): (e["side"], e["type"])
+        for e in events
+        if e["kind"] == "UNIT"
+    }
+    spawned_by_type, survivors_by_type = summarize_unit_results(events)
+    survivor_hp_by_type = summarize_survivor_hp(units_meta, frames)
     strength = []
     for fr in frames:
         sums = {"Attacker": 0, "Defender": 0}
         for uid_, _x, _y, hp in fr["units"]:
-            side = units_meta.get(uid_)
-            if side and uid_ not in dead:
+            unit_meta = units_meta.get(uid_)
+            side = unit_meta[0] if unit_meta else None
+            # Frames already omit units that are dead at that point in time.
+            # Filtering by the final kill set would erase their earlier HP.
+            if side:
                 sums[side] += hp
         strength.append({"tick": fr["tick"], **sums})
 
     atk_spawned = int((result or {}).get("atk_spawned", 0))
     def_spawned = int((result or {}).get("def_spawned", 0))
+    spawned = {
+        "Attacker": sum(spawned_by_type["Attacker"].values()) or atk_spawned,
+        "Defender": sum(spawned_by_type["Defender"].values()) or def_spawned,
+    }
     stats = {
         "mod": M.mod,
         "seed": spec.get("seed", 0),
+        "roster": {
+            "Attacker": spec.get("attacker", []),
+            "Defender": spec.get("defender", []),
+        },
         "winner": (result or {}).get("winner", "Unknown"),
         "ticks": frames[-1]["tick"] if frames else 0,
         "ticks_per_second": 1000 // timestep,
-        "spawned": {
-            "Attacker": sum(1 for e in events if e["kind"] == "UNIT" and e["side"] == "Attacker")
-            or atk_spawned,
-            "Defender": sum(1 for e in events if e["kind"] == "UNIT" and e["side"] == "Defender")
-            or def_spawned,
-        },
+        "spawned": spawned,
+        "spawned_by_type": spawned_by_type,
         "survivors": {
-            "Attacker": atk_spawned - int((result or {}).get("atk_lost", 0)),
-            "Defender": def_spawned - int((result or {}).get("def_lost", 0)),
+            "Attacker": sum(survivors_by_type["Attacker"].values()),
+            "Defender": sum(survivors_by_type["Defender"].values()),
         },
+        "survivors_by_type": survivors_by_type,
+        "survivor_hp_by_type": survivor_hp_by_type,
         "kills": [
             {"tick": int(e["tick"]), "side": e["side"], "victim": e["unit"],
              "killer": e["killer"]}
@@ -329,6 +488,7 @@ def run_battle(spec: dict, record: bool = True, timestep: int | None = None,
         "strength": strength,
         "duration_s": round(time.time() - started, 1),
         "video": str(out_mp4) if record else None,
+        "replay": str(replay_path) if replay_path else None,
         "map_uid": uid,
         "result": result,
     }
@@ -345,6 +505,8 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--grid-cols", type=int, default=4)
     ap.add_argument("--no-record", action="store_true")
+    ap.add_argument("--save-replay", action="store_true",
+                    help="save a uniquely named copy under out/replays")
     ap.add_argument("--timestep", type=int)
     ap.add_argument("--timeout", type=int, default=360)
     args = ap.parse_args()
@@ -358,6 +520,7 @@ def main() -> None:
                 "seed": args.seed, "grid_cols": args.grid_cols}
 
     stats = run_battle(spec, record=not args.no_record,
+                       save_replay=args.save_replay,
                        timestep=args.timestep, timeout=args.timeout)
     print(json.dumps({k: v for k, v in stats.items() if k != "strength"}, indent=2))
 
